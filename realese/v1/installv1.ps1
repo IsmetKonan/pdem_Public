@@ -28,13 +28,7 @@ Write-Host "$version starting Installer setup ..."
 Write-Host "Removing old setup file ..."
 Write-Host $deko
 
-$oldSetup = Join-Path $PSScriptRoot "setup.ps1"
-if (Test-Path $oldSetup) {
-    Remove-Item $oldSetup -Force
-    Write-Host "Old setup.ps1 removed." -ForegroundColor Yellow
-}
-
-$oldmain = Join-Path $PSScriptRoot "main.ps1"
+$oldmain = Join-Path $PSScriptRoot "temp.ps1"
 if (Test-Path $oldmain) {
     Remove-Item $oldmain -Force
     Write-Host "Old main.ps1 removed." -ForegroundColor Yellow
@@ -46,21 +40,5 @@ $mainPath = Join-Path $PSScriptRoot "main.ps1"
 Invoke-WebRequest -Uri $mainUrl -OutFile $mainPath -ErrorAction Stop
 Write-Host "main.ps1 downloaded." -ForegroundColor Green
 
-$mainUrl = "https://raw.githubusercontent.com/IsmetKonan/pdem_Public/setup/setup.ps1"
-$mainPath = Join-Path $PSScriptRoot "setup.ps1"
-
-Invoke-WebRequest -Uri $mainUrl -OutFile $mainPath -ErrorAction Stop
-Write-Host "setup.ps1 downloaded." -ForegroundColor Green
-
-$versionData = @{
-    version = $version
-    release = "https://raw.githubusercontent.com/IsmetKonan/pdem_Public/main/version.json"
-    force_update = $false
-} | ConvertTo-Json -Depth 3
-
-$versionPath = Join-Path $PSScriptRoot "version.json"
-$versionData | Set-Content -Path $versionPath -Force
-Write-Host "Local version.json updated." -ForegroundColor Green
-
-Write-Host "Running setup.ps1 ..." -ForegroundColor Cyan
+Write-Host "Running main.ps1 ..." -ForegroundColor Cyan
 & $mainPath
