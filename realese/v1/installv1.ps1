@@ -1,27 +1,3 @@
-param(
-    [switch]$SkipUpdate
-)
-
-# ==============================
-# Safety: installer must never update itself
-# ==============================
-$ForceUpdate = $false
-
-# ==============================
-# Variables
-# ==============================
-$version = "1.1"
-$Root = $PSScriptRoot
-
-$TempScript = Join-Path $Root "temp.ps1"
-$MainScript = Join-Path $Root "main.ps1"
-$LogFile    = Join-Path $Root "log.txt"
-
-$MainUrl = "https://raw.githubusercontent.com/IsmetKonan/pdem_Public/main/main.ps1"
-
-# ==============================
-# UI
-# ==============================
 Clear-Host
 Write-Host "-----------------------------------------------------------------" -ForegroundColor Blue
 Write-Host "    ____                    __     __ __"
@@ -35,57 +11,64 @@ Write-Host "$version starting Installer setup ..."
 Write-Host "-----------------------------------------------------------------"
 
 # ==============================
-# Cleanup old files
+# Variables
 # ==============================
-Write-Host "Cleaning up old files..." -ForegroundColor Yellow
+$Root = $PSScriptRoot
 
-if (Test-Path $TempScript) {
-    Remove-Item $TempScript -Force
-    Write-Host "Removed temp.ps1" -ForegroundColor Green
-}
+$TempScript = Join-Path $Root "temp.ps1"
+$LogFile    = Join-Path $Root "log.txt"
 
-if (Test-Path $LogFile) {
-    Remove-Item $LogFile -Force
-    Write-Host "Removed log file" -ForegroundColor Green
-}
+$InstallerUrl = "https://raw.githubusercontent.com/IsmetKonan/pdem_Public/main/realese/v1/installv1.ps1"
+$NewMain     = Join-Path $Root "main.ps1"
+$Downloaded  = Join-Path $Root "main.new.ps1"
 
 # ==============================
-# Download new main.ps1
+# UI
 # ==============================
-Write-Host "Downloading main.ps1..." -ForegroundColor Yellow
+Clear-Host
+Write-Host "Installer v1 starting..." -ForegroundColor Cyan
+
+# ==============================
+# Cleanup
+# ==============================
+Write-Host "Cleaning old files..." -ForegroundColor Yellow
+
+if (Test-Path $TempScript) { Remove-Item $TempScript -Force }
+if (Test-Path $LogFile)    { Remove-Item $LogFile -Force }
+
+# ==============================
+# Download installv1.ps1 → main
+# ==============================
+Write-Host "Downloading new main.ps1..." -ForegroundColor Yellow
 
 try {
-    Invoke-WebRequest -Uri $MainUrl -OutFile "$MainScript.new" -ErrorAction Stop
-    Write-Host "Download successful." -ForegroundColor Green
+    Invoke-WebRequest -Uri $InstallerUrl -OutFile $Downloaded -ErrorAction Stop
 } catch {
-    Write-Host "FAILED to download main.ps1" -ForegroundColor Red
+    Write-Host "Download failed. Aborting update." -ForegroundColor Red
     exit 1
 }
 
 # ==============================
-# Replace installer with main
+# Replace current script SAFELY
 # ==============================
-Write-Host "Applying update..." -ForegroundColor Cyan
-
-$SelfReplace = @"
+$ReplaceScript = @"
 Start-Sleep -Seconds 1
 
-# Delete old main if exists
-if (Test-Path '$MainScript') {
-    Remove-Item '$MainScript' -Force
+if (Test-Path '$NewMain') {
+    Remove-Item '$NewMain' -Force
 }
 
-# Rename downloaded main
-Rename-Item '$MainScript.new' 'main.ps1'
+Rename-Item '$Downloaded' 'main.ps1'
 
-# Delete installer
 Remove-Item '$PSCommandPath' -Force
 "@
 
-$ReplaceScript = Join-Path $Root "replace.ps1"
-$SelfReplace | Out-File $ReplaceScript -Encoding UTF8
+$ReplacePath = Join-Path $Root "replace.ps1"
+$ReplaceScript | Out-File $ReplacePath -Encoding UTF8
 
-Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ReplaceScript`"" -WindowStyle Hidden
+Start-Process powershell `
+    -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ReplacePath`"" `
+    -WindowStyle Hidden
 
-Write-Host "Update completed. Exiting installer." -ForegroundColor Green
+Write-Host "Update applied successfully." -ForegroundColor Green
 exit
