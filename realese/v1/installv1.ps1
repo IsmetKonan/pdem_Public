@@ -1,44 +1,91 @@
-# Functions
+param(
+    [switch]$SkipUpdate
+)
 
-function Set-ConsoleColor ($bc, $fc) {
-    $Host.UI.RawUI.BackgroundColor = $bc
-    $Host.UI.RawUI.ForegroundColor = $fc
-    Clear-Host
-}
+# ==============================
+# Safety: installer must never update itself
+# ==============================
+$ForceUpdate = $false
 
+# ==============================
 # Variables
+# ==============================
 $version = "1.1"
-$emptyline = "                                                                 "
-$deko = "-----------------------------------------------------------------"
+$Root = $PSScriptRoot
 
-# Setup 
+$TempScript = Join-Path $Root "temp.ps1"
+$MainScript = Join-Path $Root "main.ps1"
+$LogFile    = Join-Path $Root "log.txt"
 
-Set-ConsoleColor 'black' 'blue'
-Write-Host $emptyline
-Write-Host $deko
-Write-Host "    ____                    __     __ __                      "
-Write-Host "   /  _/________ ___  ___  / /_   / //_/___  ____  ____ _____ "
-Write-Host "   / // ___/ __ `__ \/ _ \/ __/  / ,< / __ \/ __ \/ __ `/ __ \"
+$MainUrl = "https://raw.githubusercontent.com/IsmetKonan/pdem_Public/main/main.ps1"
+
+# ==============================
+# UI
+# ==============================
+Clear-Host
+Write-Host "-----------------------------------------------------------------" -ForegroundColor Blue
+Write-Host "    ____                    __     __ __"
+Write-Host "   /  _/________ ___  ___  / /_   / //_/___  ____  ____ _____"
+Write-Host "   / // ___/ __ __ \/ _ \/ __/  / ,< / __ \/ __ \/ __ / __ \"
 Write-Host " _/ /(__  ) / / / / /  __/ /_   / /| / /_/ / / / / /_/ / / / /"
-Write-Host "/___/____/_/ /_/ /_/\___/\__/  /_/ |_\____/_/ /_/\__,_/_/ /_/ "                                                             
-Write-Host $deko
-Write-Host $emptyline
+Write-Host "/___/____/_/ /_/ /_/\___/\__/  /_/ |_\____/_/ /_/\__,_/_/ /_/"
+Write-Host "-----------------------------------------------------------------" -ForegroundColor Blue
 Write-Host "CC Ismet Konan"
 Write-Host "$version starting Installer setup ..."
-Write-Host "Removing old setup file ..."
-Write-Host $deko
+Write-Host "-----------------------------------------------------------------"
 
-$oldmain = Join-Path $PSScriptRoot "temp.ps1"
-if (Test-Path $oldmain) {
-    Remove-Item $oldmain -Force
-    Write-Host "Old main.ps1 removed." -ForegroundColor Yellow
+# ==============================
+# Cleanup old files
+# ==============================
+Write-Host "Cleaning up old files..." -ForegroundColor Yellow
+
+if (Test-Path $TempScript) {
+    Remove-Item $TempScript -Force
+    Write-Host "Removed temp.ps1" -ForegroundColor Green
 }
 
-$mainUrl = "https://raw.githubusercontent.com/IsmetKonan/pdem_Public/main/main.ps1"
-$mainPath = Join-Path $PSScriptRoot "main.ps1"
+if (Test-Path $LogFile) {
+    Remove-Item $LogFile -Force
+    Write-Host "Removed log file" -ForegroundColor Green
+}
 
-Invoke-WebRequest -Uri $mainUrl -OutFile $mainPath -ErrorAction Stop
-Write-Host "main.ps1 downloaded." -ForegroundColor Green
+# ==============================
+# Download new main.ps1
+# ==============================
+Write-Host "Downloading main.ps1..." -ForegroundColor Yellow
 
-Write-Host "Running main.ps1 ..." -ForegroundColor Cyan
-& $mainPath
+try {
+    Invoke-WebRequest -Uri $MainUrl -OutFile "$MainScript.new" -ErrorAction Stop
+    Write-Host "Download successful." -ForegroundColor Green
+} catch {
+    Write-Host "FAILED to download main.ps1" -ForegroundColor Red
+    exit 1
+}
+
+# ==============================
+# Replace installer with main
+# ==============================
+Write-Host "Applying update..." -ForegroundColor Cyan
+
+$SelfReplace = @"
+Start-Sleep -Seconds 1
+
+# Delete old main if exists
+if (Test-Path '$MainScript') {
+    Remove-Item '$MainScript' -Force
+}
+
+# Rename downloaded main
+Rename-Item '$MainScript.new' 'main.ps1'
+
+# Delete installer
+Remove-Item '$PSCommandPath' -Force
+"@
+
+$ReplaceScript = Join-Path $Root "replace.ps1"
+$SelfReplace | Out-File $ReplaceScript -Encoding UTF8
+
+Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ReplaceScript`"" -WindowStyle Hidden
+
+Write-Host "Update completed. Exiting installer." -ForegroundColor Green
+exit
