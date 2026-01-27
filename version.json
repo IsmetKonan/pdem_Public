@@ -1,5 +1,6 @@
 {
   "version": 1.1,
   "release": "https://raw.githubusercontent.com/IsmetKonan/pdem_Public/main/realese/v1/installv1.ps1",
-  "force_update": false
+  "force_update": false,
+  "name": "installv1.ps1
 }
